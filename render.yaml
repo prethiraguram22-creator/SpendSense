@@ -1,0 +1,40 @@
+# SpendSense Infrastructure as Code — Render Blueprint
+version: "1"
+
+databases:
+  - name: spendsense-db
+    databaseName: spendsense
+    user: spendsense_user
+    plan: free # Can be upgraded to starter/standard for production backups
+    region: oregon
+    ipAllowList: [] # Open to internal Render services
+
+services:
+  # SpendSense Node.js / Express Backend REST API
+  - type: web
+    name: spendsense-api
+    runtime: node
+    region: oregon
+    plan: free
+    rootDir: server
+    buildCommand: npm install && npx prisma generate --schema=prisma/schema.prisma && npx prisma migrate deploy
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: spendsense-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: FRONTEND_URL
+        sync: false # Set to your deployed Vercel domain (e.g. https://spendsense.vercel.app)
+      - key: CORS_ORIGINS
+        sync: false # Comma-separated list including your Vercel domains
+

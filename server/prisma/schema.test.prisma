@@ -1,0 +1,104 @@
+// SpendSense Automated Test Database Schema (SQLite for local test runners)
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/@prisma/test-client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./test.db"
+}
+
+model User {
+  id                   String                  @id @default(uuid())
+  name                 String
+  email                String                  @unique
+  passwordHash         String
+  isVerified           Boolean                 @default(false)
+  currency             String                  @default("INR")
+  monthlyIncomeTarget  Float                   @default(0.0)
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+
+  transactions         Transaction[]
+  budgets              Budget[]
+  savingsGoals         SavingsGoal[]
+  passwordResetTokens  PasswordResetToken[]
+  notificationPref     NotificationPreference?
+}
+
+model Transaction {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          String    // "income" | "expense"
+  amount        Float
+  category      String
+  description   String
+  date          DateTime
+  paymentMethod String?
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([userId, date])
+}
+
+model Budget {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category       String
+  amount         Float
+  period         String    @default("monthly")
+  startDate      DateTime  @default(now())
+  alertThreshold Int       @default(75)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([userId, category, period])
+  @@index([userId])
+}
+
+model SavingsGoal {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  targetAmount   Float
+  currentAmount  Float     @default(0.0)
+  targetDate     DateTime
+  category       String?
+  description    String?
+  status         String    @default("on_track")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model NotificationPreference {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  budgetAlerts       Boolean  @default(true)
+  overrunPredictions Boolean  @default(true)
+  weeklyReport       Boolean  @default(true)
+  goalMilestones     Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
